@@ -1,36 +1,41 @@
-URL dispatcher
+URL 调度器
 =================
 
 在高质量Web应用中，一个干净的、优雅的URL方案是一个很重要的细节。Django让你设计你想要的URL，没有框架限制。
 
-没有.php或者.cgi要求，and certainly none of that 0,2097,1-1-1928,00 nonsense.
+没有.php或者.cgi要求，当然没有 0,2097,1-1-1928,00 废话。
 
-查看WWW的创建者Tim Berners-Len的 [Cool URIs don't change](http://www.w3.org/Provider/Style/URI) ，for excellent arguments on why URLs should be clean and usable.
+查看WWW的创建者Tim Berners-Len的 [Cool URIs don't change](http://www.w3.org/Provider/Style/URI)，这是为什么URL应该是干净并且可用的的良好论据。
 
-## Overview
+## 概要
 
-To design URLs for an app, you create a Python module informally called a URLconf (URL configuration). This module is pure Python code and is a simple mapping between URL patterns (simple regular expressions) to Python functions (your views).
+为一个app设计URL，你创建一个Python模块非正式的称为一个URLconf(URL配置)。这个模块是纯Python代码，它是一个简单的URL模式(简单的正则表达式)与Python函数(你的视图)间的映射。
 
-This mapping can be as short or as long as needed. It can reference other mappings. And, because it’s pure Python code, it can be constructed dynamically.
+这个映射可长可短，这依赖你的需求。它可以引用其他映射。并且，因为它是纯Python代码，它可以被动态的构造。
 
-Django also provides a way to translate URLs according to the active language. See the internationalization documentation for more information.
+Django 还提供了根据当前语言来翻译URL的方法。查看[internationalization documentation](https://docs.djangoproject.com/en/1.6/topics/i18n/translation/#url-internationalization)了解更多信息。
 
-## How Django processes a request
+## Django怎样处理一个请求
 
-When a user requests a page from your Django-powered site, this is the algorithm the system follows to determine which Python code to execute:
+当一个用户请求你的Django驱动的站点的一个页面时，如下是该系统的算法，来确定哪些代码被执行：
 
-1. Django determines the root URLconf module to use. Ordinarily, this is the value of the ROOT_URLCONF setting, but if the incoming HttpRequest object has an attribute called urlconf (set by middleware request processing), its value will be used in place of the ROOT_URLCONF setting.
-2. Django loads that Python module and looks for the variable urlpatterns. This should be a Python list, in the format returned by the function django.conf.urls.patterns().
-3. Django runs through each URL pattern, in order, and stops at the first one that matches the requested URL.
-4. Once one of the regexes matches, Django imports and calls the given view, which is a simple Python function (or a class based view). The view gets passed the following arguments:
+1. Django确定根URLconf模块来使用。 按理说，它是 ROOT_URLCONF 设置的值，但是如果传入的HttpRequest对象有一个名为URLconf的属性(通过中间件请求处理设置)，那么它的值将被使用来代替 ROOT_URLCONF 设置。
 
-	- An instance of HttpRequest.
-	- If the matched regular expression returned no named groups, then the matches from the regular expression are provided as positional arguments.
-	- The keyword arguments are made up of any named groups matched by the regular expression, overridden by any arguments specified in the optional kwargs argument to django.conf.urls.url().
+2. Django加载Python模块和查找urlpatterns变量。它应该是一个以函数 `django.conf.urls.patterns()` 返回的格式Python列表，
 
-5. If no regex matches, or if an exception is raised during any point in this process, Django invokes an appropriate error-handling view. See Error handling below.
+3. Django 按顺序运行每个URL模式，并停止于匹配请求URL的第一个模式。
 
-## Example
+4. 一旦一个正则表达式匹配，Django会导入和调用给定的视图，它是一个简单的Python函数(或者基于视图的类)。视图被传递以下参数：
+
+	- HttpRequest的一个实例。
+
+	- 如果匹配的正则表达式返回没有命名的组，那么正则表达式匹配项将会以位置参数被提供。
+
+	- 被正则表达式匹配的任何命名组都会生成关键字参数，它会被传递给 `django.conf.urls.url()` 的可选关键字参数中指定的参数覆盖。
+
+5. 如果没有正则表达式匹配，或者如果在这个过程中的任意点抛出一个异常，Django会调用一个适当的错误处理视图。查看下面的错误处理。
+
+## 例子
 
 这是一个URLconf的例子：
 
@@ -49,15 +54,21 @@ urlpatterns = patterns('',
 注意：
 
 - 要从URL上抓取值，只需要把它放在括号里。
+
 - 没有必要加一个前导斜杠，因为每个URL都有。例如,是^articles，而不是^/articles。
+
 - 每个正则表达式字符串前面的'r'是可选的，但是推荐使用。它告诉Python这个字符串是"原生的" - 即是字符串中的任何字符都不需要转义。查看 [Dive Into Python’s explanation](http://www.diveintopython.net/regular_expressions/street_addresses.html#re.matching.2.3) 。
 
 请求例子：
 
 - 请求/articles/2005/03/将匹配列表中第3个条目。Django将调用函数 `news.views.month_archive(request,'2005','03')`。
+
 - 请求/articles/2005/03/不会匹配任何URL模式，因为第3个条目要求月份为2个数字。
+
 - 请求/articles/2003/将匹配列表中第一个模式，不是第二个，因为模式是按照顺序测试的，并且第1个第一次测试就通过了。可以像这样利用顺序插入特殊的案例。
+
 - 请求/articles/2003 不会匹配任何的模式，因为每个模式要求URL以斜杠结尾。
+
 - 请求/articles/2003/03/03/匹配最后一个模式。Django会调用函数 `news.views.articles_detail(request,'2003','03','03')`。
 
 ## 命名的组
@@ -534,13 +545,146 @@ def redirect_to_year(request):
 
 在某些情况下，视图都是一般类型的，在URL和视图间可能存在一个多对一的关系。对于这种情况，当它涉及到反向解析URL时，视图名称不是一个足够好的标识符。阅读下一章了解Django提供的关于这点的解决方案。
 
-## Naming URL patterns
+## 命名URL模式
 
+在URLconf中，多个URL模式使用相同的函数是非常常见的。例如，这两个URL模式都指向archive视图：
 
-## URL namespaces
+```python
 
-### Introduction
-### Reversing namespaced URLs
-### URL namespaces and included URLconfs
+from django.conf.urls import patterns, url
+from mysite.views import archive
 
-#### Example
+urlpatterns = patterns('',
+    url(r'^archive/(\d{4})/$', archive),
+    url(r'^archive-summary/(\d{4})/$', archive, {'summary': True}),
+)
+```
+
+这完全的是有效的，但是当你尝试去反向URL匹配时(通过`reverse()函数或者url模板标签`)会导致一些问题。继续看这个例子，如果你想获取archive视图的URL，Django反向URL匹配就会产生困惑，因为两个URL模式指向这个视图。
+
+为了解决这个问题，Django支持命名的URL模式。即就是，你可以为一个URL模式指定一个名称来与其他使用相同视图和参数的URL模式区分开。然后，你就可以在反向URL匹配中使用该名称了。
+
+这里是上面的例子使用命名的URL模式重写的：
+
+```python
+
+from django.conf.urls import patterns, url
+from mysite.views import archive
+
+urlpatterns = patterns('',
+    url(r'^archive/(\d{4})/$', archive, name="full-archive"),
+    url(r'^archive-summary/(\d{4})/$', archive, {'summary': True}, name="arch-summary"),
+)
+```
+
+有了这些名字(full-archive和arch-summary)，您可以通过使用其名称分别定位每个模式：
+
+```html
+
+{% url 'arch-summary' 1945 %}
+{% url 'full-archive' 2007 %}
+```
+
+即使这里两个URL模式都指向archive视图，在django.conf.urls.url()中使用name参数可以让你在模板中把他们区分开来。
+
+用于URL名称的字符串可以包含你喜欢的任意字符。不仅限于有效的Python名称。
+
+**注意**
+
+当你命名你的URL模式，请确保您使用的名字不太可能与任何其他应用程序所选择的名称发生冲突。如果你调用你的URL模式comment，另一个应用也做相同的事情，当你使用这个名称的时候，不能保证哪个URL将被插入到你的模板中。
+
+为你的URL名称加上一个前缀，也许来源于应用的名称，将减少发生冲突的机会。我们推荐使用myapp-comment代替comment。
+
+## URL命名空间
+
+### 介绍
+
+当你需要部署单个应用的多个实例时，能区分不同的实例是非常有用的。当使用命名的URL模式的时候，这点特别的重要，因为单个应该的多个实例将分享命名的URL。命名空间提供了一种来分辨这些命名的URL的方法。
+
+一个URL的命名空间有两部分，他们都是字符串：
+
+**应用命名空间**
+
+它描述了正被部署的应用的名称。应用的每个实例都有相同的应用命名空间。例如，Django的admin应用有些可预见的应用命名空间'admin'。
+
+**实例命名空间**
+
+它标识了一个应用特定的实例。实例命名空间应该在你的整个工程中是唯一的。然而，一个实例命名空间可以与应用命名空间一样。它用于为一个应用指定一个默认的实例。例如，默认的Django Admin实例有一个'admin'的实例命名空间。
+
+命名空间的URL被使用':'操作符指定。例如，admin应用的主页用admin:index引用。它表明了一个命名空间'admin'和一个命名的URL'index'。
+
+命名空间也可以嵌套。命名URL'foo:bar:whiz'将在命名空间'bar'中查找名称为'whiz'的模式，'bar'为在顶级命名空间'foo'中定义的。
+
+### 反向解析命名空间URL
+
+当给出一个命名空间URL(例如，'myapp:index')来解析，Django会分割完整的名称，然后尝试一下查询：
+
+ 1. 第一，Django查找匹配的应用命名空间(在这个例子中，'myapp')。它将产生该应用实例的列表。
+
+ 2. 如果有定义当前应用，Djang查找并返回该实例的URL。当前应用可以被指定为模板上下文上的一个属性 - 期望有多个部署的应用应该在任何用于呈现一个模板的Context或者RequestContext上设置current_app属性。
+ 当前应用也可以通过 `django.core.urlresolvers.reverse()` 函数的一个参数手动指定。
+
+ 3. 如果没有当前应用。Django会查找一个默认应用实例。默认应用实例是有一个实例命名空间匹配应用命名空间(在这个例子中，myapp的一个实例叫'myapp')的实例。
+
+ 4. 如果没有默认应用实例，Django将挑最新部署的应用实例，无论它的实例名称是什么。
+
+ 5. 如果在步骤1中，提供的命名空间没有匹配应用命名空间，Django将试图将这个命名空间作为实例命名空间直接查找。
+
+如果有嵌套的命名空间，命名空间的每个部分都会重复这些步骤，直到只剩下视图名未解析。然后，视图名称将会被解析为被发现的命名空间中的一个URL。
+
+#### 例子
+
+为了展示这个解决策略，考虑myapp的两个实例的例子：一个叫做'foo'，另一个叫做'bar'。myapp有一个主页URL命名为'index'。使用这个设置，以下的查询是可能的：
+ - 如果一个实例是当前的 - 就是说，如果我们在实例'bar'中呈现一个实用页面 - 'myapp:index'将会解析为实例'bar'的主页。
+
+ - 如果没有当前实例 - 就是说，如果我们在这个网站上的其他地方展示一个页面 - 'myapp:index'将解析为myapp最新注册的实例。因为没有默认的实例，myapp的最新的实例将被使用。可能是'foo'或者'bar',这取决与他们被引入工程的urlpattern的顺序。
+
+ - 'foo:index'总是会被解析为实例'foo'的主页。
+
+如果也有一个默认的实例 - 即，名称为'myapp'的实例 - 会发生如下的事情：
+
+ - 如果一个实例是当前的 - 就是说，如果我们在实例'bar'中呈现一个实用页面 - 'myapp:index'将会解析为实例'bar'的主页。
+
+ - 如果没有当前实例 - 就是说，如果我们在这个网站上的其他地方展示一个页面 - 'myapp:index'将解析为默认实例的主页。
+
+ - 'foo:index'还是会解析为实例'foo'的主页。
+
+### URL 命名空间和包含 URLconf 
+
+包含的URLconf的URL命名空间可以通过两种方式指定。
+
+首先，你可以通过在你构造你的URL模式的时候为 `django.conf.urls.include()` 提供应用和实例命名空间作为参数。例如：
+
+```python
+
+url(r'^help/', include('apps.help.urls', namespace='foo', app_name='bar')),
+```
+
+这将包含定义在apps.help.urls中，应用命名空间为'bar'，实例命名空间为'foo'的URL。
+
+第二，你可以包含嵌入式的命名空间数据的对象。如果你 `include()` 一个被 `patterns()` 返回的对象，包含在这个对象中的URL会被添加到全局命名空间。然而，你也可以 `include()` 一个3-元组包含：
+
+```python
+
+(<patterns object>, <application namespace>, <instance namespace>)
+```
+
+例如：
+
+```python
+
+from django.conf.urls import include, patterns, url
+
+help_patterns = patterns('',
+    url(r'^basic/$', 'apps.help.views.views.basic'),
+    url(r'^advanced/$', 'apps.help.views.views.advanced'),
+)
+
+url(r'^help/', include((help_patterns, 'bar', 'foo'))),
+```
+
+它将包含提名的URL模式到给定的应用和实例命名空间。
+
+例如，Django Admin被部署为AdminSite的一个实例。AdminSite对象有一个urls属性：一个包含了相应的admin站点中的所有模式，加上应用命名空间'admin'，和admin实例名的3元素元组。当你部署一个Admin实例时，正是这个urls属性被你 `include()` 到你的工程的urlpatterns中。
+
+务必要传递一个元组给 `include()`。如果你简单的传递3个参数：`include(help_patterns,'bar','foo')`,Django不会抛出错误，但是由于 `include()`的签名，'bar'将是实例命名空间和'foo'将是应用命名空间，而不是反之亦然。
